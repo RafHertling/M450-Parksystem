@@ -1,6 +1,5 @@
-// KasseCore.h - Logik der Kasse (Pico 1): Fahrzeuge speichern, Gebuehr berechnen,
-// bezahlen, ausfahren. Reines C++ ohne Arduino-Funktionen (auf dem PC testbar).
-// Die Uhrzeit wird von aussen als "now" (Sekunden seit 1970, UTC) uebergeben.
+// Logik der Kasse. Ohne Arduino-Funktionen, damit sie auch auf dem PC getestet werden kann.
+// "now" ist die Zeit in Sekunden seit 1970 (UTC).
 #pragma once
 #include <algorithm>
 #include "Common.h"
@@ -9,7 +8,7 @@
 
 namespace park {
 
-// Tarif (Annahme A1 und A5 im Testkonzept). Aufenthalt in ganzen Minuten.
+// Tarif, Aufenthalt in ganzen Minuten:
 //   0-60 Min: CHF 2.00 | 61-180: 3.50 | 181-240: 5.00 | 241-300: 6.00 | 301-360: 7.00
 //   ab 361 Min: plus CHF 1.00 pro angefangene weitere Stunde
 inline i64 feeRappen(i64 minutes) {
@@ -22,14 +21,11 @@ inline i64 feeRappen(i64 minutes) {
   return 700 + 100 * ((minutes - 360 + 59) / 60);
 }
 
-// Uhr gilt erst als gestellt, wenn sie nach November 2023 steht (sonst NTP noch nicht fertig)
+// vor NTP steht die Uhr auf 1970
 inline bool timeIsValid(i64 now) { return now >= 1700000000LL; }
 
-// Die Schranken warten hoechstens 3 Sekunden auf die Kasse. Antwortet die Kasse erst spaeter
-// (z. B. weil sie kurz haengt), darf sie die alte Anfrage nicht mehr ausfuehren: Sonst waere
-// ein Fahrzeug eingetragen oder ausgetragen, obwohl die Schranke geschlossen blieb.
-// Darum schicken die Schranken ihre Uhrzeit (ts) mit; ist sie aelter als STALE_SECONDS, wird die
-// Anfrage verworfen. Beide Picos holen die Uhrzeit per NTP (Annahme A6).
+// Die Schranken warten nur 3 s auf die Kasse. Kommt eine Anfrage spaeter an, ist die Schranke
+// schon zu geblieben, also wird sie verworfen (ts = Uhrzeit der Schranken).
 static const i64 STALE_SECONDS = 2;
 
 struct Vehicle {
@@ -38,7 +34,7 @@ struct Vehicle {
   char plate[12];
   i64 entry;       // Einfahrtszeit (Sekunden seit 1970)
   bool paid;
-  i64 paidRappen;  // bezahlter Betrag
+  i64 paidRappen;
 };
 
 class KasseApp {
@@ -107,7 +103,6 @@ class KasseApp {
     o.boolean("ok", false).str("code", code).str("message", msg);
     return jsonResponse(o);
   }
-  // true = Anfrage ist zu alt (siehe STALE_SECONDS). Ohne 'ts' wird nichts geprueft.
   static bool isStale(const Request& rq, i64 now) {
     if (!rq.has("ts") || !timeIsValid(now)) return false;
     std::string t = rq.arg("ts");
@@ -125,7 +120,6 @@ class KasseApp {
     return fail("unknown", "Kennzeichen unbekannt – Fahrzeug steht nicht im Parkhaus.");
   }
 
-  // Kennzeichen aus dem Request lesen; bei Fehler ist 'bad' gesetzt
   static bool readPlate(const Request& rq, Plate& pl, Response& bad) {
     pl = parsePlate(rq.arg("plate").c_str());
     if (pl.status != PLATE_OK) {
@@ -163,7 +157,6 @@ class KasseApp {
     std::vector<int> idx;
     for (int i = 0; i < MAX_VEHICLES; i++)
       if (v_[i].used) idx.push_back(i);
-    // nach Einfahrtszeit sortieren (aelteste zuerst)
     for (size_t a = 0; a < idx.size(); a++)
       for (size_t b = a + 1; b < idx.size(); b++)
         if (v_[idx[b]].entry < v_[idx[a]].entry) std::swap(idx[a], idx[b]);
@@ -178,7 +171,7 @@ class KasseApp {
     return jsonResponse(o);
   }
 
-  // US-3: Gebuehr anzeigen
+  // US-3
   Response fee(const Request& rq, i64 now) {
     Plate pl;
     Response bad;
@@ -199,7 +192,7 @@ class KasseApp {
     return jsonResponse(o);
   }
 
-  // US-4: bezahlen. Optional 'amount' (Rappen) = der Betrag, den der Kunde gesehen hat.
+  // US-4. 'amount' ist der Betrag, den der Kunde gesehen hat (die Gebuehr kann inzwischen gestiegen sein).
   Response pay(const Request& rq, i64 now) {
     Plate pl;
     Response bad;
@@ -227,7 +220,7 @@ class KasseApp {
     return jsonResponse(o);
   }
 
-  // US-1/US-2: Einfahrt registrieren
+  // US-1, US-2
   Response entry(const Request& rq, i64 now) {
     Plate pl;
     Response bad;
@@ -253,7 +246,7 @@ class KasseApp {
     return jsonResponse(o);
   }
 
-  // US-5: Ausfahrt nur wenn bezahlt. Prueft und entfernt in einem Schritt.
+  // US-5
   Response exitCar(const Request& rq, i64 now) {
     Plate pl;
     Response bad;
@@ -279,7 +272,6 @@ class KasseApp {
     return jsonResponse(o);
   }
 
-  // Testfeld: Einfahrtszeit auf "jetzt minus X Minuten" setzen
   Response testfield(const Request& rq, i64 now) {
     if (!TESTFIELD_ENABLED) {
       Response r;

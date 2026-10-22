@@ -1,6 +1,4 @@
-// pages.h - Weboberflaeche der Kasse. Dieselbe Seite dient als
-//   Kasse   (http://<IP-Kasse>/)        und als
-//   Automat (http://<IP-Kasse>/automat)  - der Automat ist die gleiche Oberflaeche im zweiten Fenster.
+// Weboberflaeche der Kasse, auch fuer den Automaten (/automat).
 #pragma once
 
 static const char KASSE_HTML[] = R"rawliteral(<!doctype html>
@@ -323,7 +321,6 @@ static const char KASSE_HTML[] = R"rawliteral(<!doctype html>
     }).catch(function () { setConn(false); });
   }
 
-  // Testfeld
   $('tfForm').addEventListener('submit', function (ev) {
     ev.preventDefault();
     var p = $('tfPlate').value, m = $('tfMinutes').value;

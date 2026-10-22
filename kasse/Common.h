@@ -1,10 +1,4 @@
-// Common.h - gemeinsame Hilfsfunktionen fuer Kasse (Pico 1) und Schranken (Pico 2).
-// ACHTUNG: Diese Datei ist in kasse/ und schranken/ identisch. Aenderungen immer in
-// beiden Ordnern machen (test/run_tests.sh prueft das).
-//
-// Enthalten sind: Kennzeichen pruefen, Geldbetrag formatieren, kleiner JSON-Schreiber
-// und -Leser, Request/Response-Typen und das Lesen einer HTTP-Antwort.
-// Alles ist reines C++ ohne Arduino-Funktionen, damit man es auf dem PC testen kann.
+// Hilfsfunktionen fuer beide Picos. Die Datei ist in kasse/ und schranken/ gleich.
 #ifndef PARKHAUS_COMMON_H
 #define PARKHAUS_COMMON_H
 #include <stdio.h>
@@ -18,10 +12,7 @@ namespace park {
 
 typedef long long i64;
 
-// ---------------------------------------------------------------------------
-// Kennzeichen:  zwei Buchstaben + ein bis sechs Ziffern  (Annahme A2)
-// Gross/Klein und Leerzeichen spielen keine Rolle.
-// ---------------------------------------------------------------------------
+// Kennzeichen: zwei Buchstaben + ein bis sechs Ziffern
 enum PlateStatus {
   PLATE_OK = 0,
   PLATE_EMPTY,
@@ -36,8 +27,8 @@ enum PlateStatus {
 
 struct Plate {
   PlateStatus status;
-  char key[10];      // normalisiert, z.B. "TI2468" (so wird gespeichert und verglichen)
-  char display[12];  // zum Anzeigen, z.B. "TI 2468"
+  char key[10];      // "TI2468"
+  char display[12];  // "TI 2468"
   unsigned char badChar;
 };
 
@@ -52,20 +43,18 @@ inline Plate parsePlate(const char* raw) {
   p.badChar = 0;
   if (!raw) raw = "";
 
-  // 1. Leerraum entfernen, Kleinbuchstaben gross schreiben
   std::string s;
   for (const unsigned char* c = (const unsigned char*)raw; *c; ++c) {
     if (*c == ' ' || *c == '\t' || *c == '\r' || *c == '\n') continue;
     if (*c >= 'a' && *c <= 'z') s += (char)(*c - 'a' + 'A');
     else s += (char)*c;
-    if (s.size() > 64) break;  // sehr lange Eingaben nicht weiter verarbeiten
+    if (s.size() > 64) break;
   }
   if (s.empty()) {
     p.status = PLATE_EMPTY;
     return p;
   }
 
-  // 2. nur Buchstaben A-Z und Ziffern erlaubt
   for (size_t i = 0; i < s.size(); i++) {
     unsigned char c = (unsigned char)s[i];
     if (!isLetterCh(c) && !isDigitCh(c)) {
@@ -75,7 +64,6 @@ inline Plate parsePlate(const char* raw) {
     }
   }
 
-  // 3. Aufbau: Buchstaben, dann Ziffern
   size_t i = 0, letters = 0, digits = 0;
   while (i < s.size() && isLetterCh((unsigned char)s[i])) { letters++; i++; }
   while (i < s.size() && isDigitCh((unsigned char)s[i])) { digits++; i++; }
@@ -91,7 +79,7 @@ inline Plate parsePlate(const char* raw) {
   return p;
 }
 
-// Meldung mit dem Grund, immer ein Satz (AK-2.4)
+// immer ein Satz (AK-2.4)
 inline std::string plateMessage(const Plate& p) {
   const char* tail = " (erwartet: zwei Buchstaben und ein bis sechs Ziffern)";
   switch (p.status) {
@@ -117,11 +105,7 @@ inline std::string plateMessage(const Plate& p) {
   return "Ungültiges Kennzeichen.";
 }
 
-// ---------------------------------------------------------------------------
-// Geld: alle Beträge intern in Rappen
-// ---------------------------------------------------------------------------
-// Zahl als Text. Wir benutzen weder printf mit Long-Long-Format noch std::to_string, weil beides
-// auf manchen Mikrocontroller-Toolchains (newlib-nano) fehlt.
+// Betraege in Rappen. Kein std::to_string / %lld, fehlt in newlib-nano.
 inline std::string itos(i64 v) {
   if (v == 0) return "0";
   bool neg = v < 0;
@@ -149,9 +133,7 @@ inline std::string chf(i64 rappen) {
   return o;
 }
 
-// ---------------------------------------------------------------------------
-// JSON schreiben (kleiner Baukasten, nur flache Objekte)
-// ---------------------------------------------------------------------------
+// JSON, nur flache Objekte
 inline std::string jsonEscape(const std::string& s) {
   std::string o;
   for (size_t i = 0; i < s.size(); i++) {
@@ -209,9 +191,6 @@ class JObj {
   std::string s_;
 };
 
-// ---------------------------------------------------------------------------
-// JSON lesen (nur fuer die flachen Antworten der Kasse)
-// ---------------------------------------------------------------------------
 inline bool jsonFindKey(const std::string& j, const char* key, size_t& pos) {
   std::string pat = std::string("\"") + key + "\":";
   size_t p = j.find(pat);
@@ -254,12 +233,9 @@ inline bool jsonGetString(const std::string& j, const char* key, std::string& ou
       } else out += e;
     } else out += c;
   }
-  return false;  // String nicht beendet
+  return false;
 }
 
-// ---------------------------------------------------------------------------
-// Request / Response (unabhaengig vom Arduino-WebServer)
-// ---------------------------------------------------------------------------
 struct Request {
   std::string method;  // "GET", "POST"
   std::string path;    // "/api/fee"
@@ -290,21 +266,16 @@ inline Response jsonResponse(const JObj& o, int status = 200) {
   return r;
 }
 
-// ---------------------------------------------------------------------------
-// HTTP-Antwort lesen (fuer den Aufruf Schranken -> Kasse)
-// ---------------------------------------------------------------------------
-// Ist die Antwort vollstaendig? (Header zu Ende und, wenn angegeben, Content-Length erreicht)
 inline bool httpComplete(const std::string& raw) {
   size_t h = raw.find("\r\n\r\n");
   if (h == std::string::npos) return false;
   size_t cl = raw.find("Content-Length:");
   if (cl == std::string::npos || cl > h) cl = raw.find("content-length:");
-  if (cl == std::string::npos || cl > h) return false;  // unbekannt -> auf Verbindungsende warten
+  if (cl == std::string::npos || cl > h) return false;  // ohne Content-Length bis Verbindungsende
   long len = atol(raw.c_str() + cl + 15);
   return (long)(raw.size() - (h + 4)) >= len;
 }
 
-// Statuscode und Body aus einer rohen HTTP-Antwort holen. false = keine gueltige Antwort.
 inline bool httpParse(const std::string& raw, int& status, std::string& body) {
   if (raw.compare(0, 5, "HTTP/") != 0) return false;
   size_t sp = raw.find(' ');

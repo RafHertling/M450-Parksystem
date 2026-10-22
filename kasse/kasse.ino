@@ -1,18 +1,5 @@
-/*
-  kasse.ino - Parksystem, Pico 1 = KASSE (Raspberry Pi Pico W)
-
-  Aufgaben:
-    - Weboberflaeche der Kasse (http://<IP>/) und des Automaten (http://<IP>/automat)
-    - speichert Kennzeichen, Einfahrtszeit und Bezahlstatus (RAM, geht beim Neustart verloren)
-    - berechnet die Parkgebuehr aus der Aufenthaltsdauer
-    - wird vom Schranken-Pico (Pico 2) per HTTP angefragt (/api/entry, /api/exit)
-
-  Board:  "Raspberry Pi Pico W" im Arduino-Pico-Core von Earle Philhower
-          (Boardverwalter-URL: https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json)
-  Vorher: WLAN-Name und Passwort in config.h eintragen.
-  Danach: Serieller Monitor (115200 Baud) zeigt die IP-Adresse. Diese IP im Schranken-Pico
-          (config.h, KASSE_HOST) eintragen oder in dessen Weboberflaeche setzen.
-*/
+// Kasse (Pico 1): Weboberflaeche fuer Kasse (/) und Automat (/automat),
+// speichert die Fahrzeuge und berechnet die Gebuehr.
 #include <WiFi.h>
 #include <WebServer.h>
 #include <time.h>
@@ -23,13 +10,12 @@
 WebServer server(80);
 park::KasseApp app;
 
-static bool started = false;          // Webserver und NTP laufen
+static bool started = false;
 static unsigned long lastWifiTry = 0;
 static unsigned long lastInfo = 0;
 
 static park::i64 nowEpoch() { return (park::i64)time(nullptr); }
 
-// Alle Anfragen gehen an KasseApp::handle() (siehe KasseCore.h)
 static void handleAll() {
   park::Request rq;
   switch (server.method()) {
@@ -51,7 +37,7 @@ void setup() {
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
-  setenv("TZ", TIMEZONE, 1);  // Schweizer Zeit
+  setenv("TZ", TIMEZONE, 1);
   tzset();
 
   WiFi.mode(WIFI_STA);
@@ -64,7 +50,7 @@ void setup() {
 void loop() {
   if (WiFi.status() == WL_CONNECTED) {
     if (!started) {
-      NTP.begin("pool.ntp.org", "time.nist.gov");  // Uhrzeit per NTP holen
+      NTP.begin("pool.ntp.org", "time.nist.gov");
       server.begin();
       started = true;
       digitalWrite(LED_BUILTIN, HIGH);
@@ -73,7 +59,7 @@ void loop() {
     }
     server.handleClient();
   } else {
-    // WLAN weg: LED blinkt, alle 10 Sekunden neu versuchen
+    // WLAN weg: alle 10 s neu verbinden
     digitalWrite(LED_BUILTIN, (millis() / 300) % 2);
     if (millis() - lastWifiTry > 10000) {
       lastWifiTry = millis();
@@ -81,7 +67,6 @@ void loop() {
     }
   }
 
-  // alle 30 Sekunden Lebenszeichen mit IP und Fahrzeugzahl
   if (millis() - lastInfo > 30000) {
     lastInfo = millis();
     Serial.print("IP: ");

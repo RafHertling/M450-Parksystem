@@ -1,7 +1,5 @@
-// SchrankenCore.h - Logik der Schranken (Pico 2): nachgemachte Kamera (Kennzeichen von Hand),
-// Einfahrts- und Ausfahrtsschranke, Anfragen an die Kasse (Pico 1).
-// Reines C++ ohne Arduino-Funktionen. Die Hardware (Servos, Netzwerk) wird ueber die zwei
-// kleinen Schnittstellen KasseLink und BarrierDriver angeschlossen (siehe schranken.ino).
+// Logik der Schranken, ohne Arduino-Funktionen. Servos und Netzwerk kommen ueber
+// KasseLink und BarrierDriver dazu (schranken.ino).
 #pragma once
 #include "Common.h"
 #include "config.h"
@@ -9,7 +7,7 @@
 
 namespace park {
 
-// Antwort der Kasse. reachable=false: keine gueltige Antwort (Pico aus, WLAN weg, Zeitueberschreitung).
+// reachable=false: keine Antwort (Pico aus, WLAN weg, Zeitlimit)
 struct KasseReply {
   bool reachable;
   int status;
@@ -52,12 +50,11 @@ class SchrankenApp {
     for (int i = 0; i < 2; i++) { open_[i] = false; openedAt_[i] = 0; }
   }
 
-  // beim Start beide Schranken schliessen
   void begin() {
     for (int i = 0; i < 2; i++) { open_[i] = false; drv_->set(i, false); }
   }
 
-  // regelmaessig aus loop() aufrufen: schliesst offene Schranken nach openMs
+  // aus loop() aufrufen
   void tick(unsigned long nowMs) {
     for (int i = 0; i < 2; i++) {
       if (open_[i] && (unsigned long)(nowMs - openedAt_[i]) >= openMs_) {
@@ -133,13 +130,12 @@ class SchrankenApp {
     return jsonResponse(o);
   }
 
-  // Einfahrt (GATE_ENTRY) oder Ausfahrt (GATE_EXIT): Kennzeichen pruefen, Kasse fragen, Schranke steuern
   Response pass(int which, const Request& rq, unsigned long nowMs, i64 nowEpoch) {
     Plate pl = parsePlate(rq.arg("plate").c_str());
     if (pl.status != PLATE_OK) return result(which, false, "invalid", plateMessage(pl), "");
 
     std::string path = std::string(which == GATE_ENTRY ? "/api/entry" : "/api/exit") + "?plate=" + pl.key;
-    // Uhrzeit mitschicken: die Kasse verwirft Anfragen, die zu spaet bei ihr ankommen (siehe KasseCore.h)
+    // die Kasse verwirft Anfragen, die zu spaet ankommen
     if (nowEpoch >= 1700000000LL) {
       path += "&ts=" + itos(nowEpoch);
     }
@@ -171,7 +167,6 @@ class SchrankenApp {
     return result(which, false, code.c_str(), msg, pl.display);
   }
 
-  // Kasse-Adresse aendern: /api/config?kasse=192.168.1.50
   Response config(const Request& rq) {
     std::string h = rq.arg("kasse");
     if (!validHost(h)) {
@@ -186,7 +181,6 @@ class SchrankenApp {
     return jsonResponse(o);
   }
 
-  // Verbindung zur Kasse pruefen (Knopf in der Oberflaeche)
   Response kasseCheck() {
     KasseReply kr = link_->post("/api/ping");
     bool ok = false;

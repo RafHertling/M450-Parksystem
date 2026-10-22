@@ -1,12 +1,9 @@
-// test_core.cpp - spielt die 42 Testfaelle aus dem Testkonzept gegen die Logik
-// (KasseCore.h + SchrankenCore.h) ab, ohne Hardware und ohne Netzwerk.
-// Die Kasse und die Schranken sind hier direkt verbunden; die Uhr wird von Hand gestellt.
+// Testfaelle TC-01 bis TC-42 gegen die Logik, ohne Hardware und Netzwerk.
 #include <stdio.h>
 #include <algorithm>
 #include <map>
 #include <set>
 #include "../kasse/KasseCore.h"
-// Schranken-Header liegt im anderen Ordner, hat aber eigene Pages/Config -> getrennt einbinden
 #define SCHRANKEN_TEST 1
 
 namespace kasse_ns {}  // (nur zur Lesbarkeit)
@@ -24,7 +21,7 @@ static int g_pass = 0, g_fail = 0;
 
 static bool has(const std::string& hay, const char* needle) { return hay.find(needle) != std::string::npos; }
 
-// ---- Verbindung Schranken -> Kasse (direkt, mit Schalter fuer "Kabel gezogen") ----
+// Verbindung Schranken -> Kasse (direkt, mit Schalter fuer "Kabel gezogen")
 struct Env;
 struct DirectLink : KasseLink {
   KasseApp* kasse;
@@ -150,7 +147,6 @@ static bool flag(const std::string& j, const char* k) {
   return b;
 }
 
-// -------------------------------------------------------------------------
 static void testPlates() {
   printf("[Kennzeichen]\n");
   struct { const char* in; PlateStatus st; const char* disp; } t[] = {
@@ -210,9 +206,7 @@ static void testFee() {
   CHECK("FEE", num(e.fee("TI 2468"), "minutes") == 61 && num(e.fee("TI 2468"), "fee") == 350);
 }
 
-// -------------------------------------------------------------------------
 // Die 42 Testfaelle des Testkonzepts in der vorgegebenen Reihenfolge
-// -------------------------------------------------------------------------
 static void testTestkonzept() {
   printf("[Testfaelle TC-01 bis TC-42]\n");
   Env e;
@@ -401,7 +395,6 @@ static void testTestkonzept() {
          e.listCount());
 }
 
-// -------------------------------------------------------------------------
 static void testExtras() {
   printf("[Zusatzfaelle]\n");
   Env e;

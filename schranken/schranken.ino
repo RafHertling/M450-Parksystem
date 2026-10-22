@@ -1,21 +1,5 @@
-/*
-  schranken.ino - Parksystem, Pico 2 = SCHRANKEN (Raspberry Pi Pico W)
-
-  Aufgaben:
-    - Weboberflaeche mit nachgemachter Kamera (http://<IP>/): Kennzeichen bei Ein- und Ausfahrt eintippen
-    - steuert die Einfahrts- und die Ausfahrtsschranke (Servos, z. B. SG90)
-    - fragt bei jeder Ein- und Ausfahrt die Kasse (Pico 1) per HTTP:
-        Einfahrt: Kasse speichert Kennzeichen + Einfahrtszeit
-        Ausfahrt: Kasse prueft, ob bezahlt ist
-    - Antwortet die Kasse nicht, bleiben BEIDE Schranken geschlossen (US-6)
-
-  Verdrahtung (SG90):  rot -> VBUS (Pin 40) | braun -> GND (z. B. Pin 8) | orange (Signal) -> GP8 (Einfahrt)
-                       zweites Servo (Ausfahrt): Signal -> GP9, rot/braun wie oben
-                       (Pins in config.h aenderbar)
-
-  Board:  "Raspberry Pi Pico W" im Arduino-Pico-Core von Earle Philhower
-  Vorher: WLAN-Name, Passwort und IP der Kasse in config.h eintragen.
-*/
+// Schranken (Pico 2): nachgemachte Kamera und zwei Servo-Schranken.
+// Bei jeder Ein- und Ausfahrt wird die Kasse gefragt.
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Servo.h>
@@ -24,9 +8,6 @@
 #include "config.h"
 #include "SchrankenCore.h"
 
-// ---------------------------------------------------------------------------
-// Schranken: zwei Servos
-// ---------------------------------------------------------------------------
 class ServoBarriers : public park::BarrierDriver {
  public:
   void begin() {
@@ -46,9 +27,6 @@ class ServoBarriers : public park::BarrierDriver {
   Servo exit_;
 };
 
-// ---------------------------------------------------------------------------
-// Verbindung zur Kasse: ein einfacher HTTP-Aufruf mit Zeitlimit
-// ---------------------------------------------------------------------------
 class KasseHttp : public park::KasseLink {
  public:
   KasseHttp() : host_(KASSE_HOST) {}
@@ -58,10 +36,10 @@ class KasseHttp : public park::KasseLink {
 
   park::KasseReply post(const std::string& pathAndQuery) override {
     park::KasseReply reply;
-    unsigned long start = millis();  // das Zeitlimit gilt fuer den ganzen Aufruf (Verbinden + Antwort)
+    unsigned long start = millis();  // Zeitlimit fuer Verbinden und Antwort zusammen
     WiFiClient client;
     client.setTimeout(KASSE_TIMEOUT_MS);
-    if (!client.connect(host_.c_str(), KASSE_PORT)) return reply;  // nicht erreichbar
+    if (!client.connect(host_.c_str(), KASSE_PORT)) return reply;
 
     client.print(String("POST ") + pathAndQuery.c_str() + " HTTP/1.0\r\nHost: " + host_.c_str() +
                  "\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
@@ -91,7 +69,6 @@ class KasseHttp : public park::KasseLink {
   std::string host_;
 };
 
-// ---------------------------------------------------------------------------
 WebServer server(80);
 ServoBarriers barriers;
 KasseHttp kasse;
@@ -128,7 +105,7 @@ void setup() {
   tzset();
 
   barriers.begin();
-  app.begin();  // beide Schranken zu
+  app.begin();
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -138,7 +115,7 @@ void setup() {
 }
 
 void loop() {
-  app.tick(millis());  // Schranken nach BARRIER_OPEN_MS wieder schliessen
+  app.tick(millis());  // schliesst offene Schranken
 
   if (WiFi.status() == WL_CONNECTED) {
     if (!started) {

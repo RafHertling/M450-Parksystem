@@ -1,51 +1,45 @@
-// config.h - Einstellungen fuer die SCHRANKEN (Pico 2)
-// Vor dem Hochladen WLAN-Name, Passwort und die IP-Adresse der Kasse eintragen.
-// Passwort nicht ins Repository einchecken!
+// Einstellungen Schranken (Pico 2)
 #pragma once
 
 #ifndef WIFI_SSID
-#define WIFI_SSID "INF-LAB"          // <-- anpassen (gleiches WLAN wie die Kasse)
+#define WIFI_SSID "INF-LAB"
 #endif
 #ifndef WIFI_PASSWORD
-#define WIFI_PASSWORD "DEIN_PASSWORT"  // <-- anpassen
+#define WIFI_PASSWORD "DEIN_PASSWORT"
 #endif
 
-// IP-Adresse des Kassen-Pico (steht im seriellen Monitor der Kasse).
-// Kann auch spaeter in der Weboberflaeche der Schranken geaendert werden.
+// IP der Kasse, kann auch in der Weboberflaeche geaendert werden
 #ifndef KASSE_HOST
-#define KASSE_HOST "172.18.13.75"      // <-- anpassen
+#define KASSE_HOST "172.18.13.75"
 #endif
 #ifndef KASSE_PORT
 #define KASSE_PORT 80
 #endif
 
-// Wie lange auf die Kasse gewartet wird, bevor "Verbindungsfehler" erscheint (Millisekunden).
-// Muss deutlich unter 10 Sekunden liegen (AK-6.3 / TC-39).
+// danach "Verbindungsfehler" (TC-39 verlangt hoechstens 10 s)
 #ifndef KASSE_TIMEOUT_MS
 #define KASSE_TIMEOUT_MS 3000
 #endif
 
-// Servos der beiden Schranken (Signalleitung, orange). Plus an VBUS (Pin 40), Minus an GND.
-// Das Schema aus der Aufgabe benutzt GP8 fuer ein Servo.
+// Servo-Signal (orange), rot an VBUS (Pin 40), braun an GND
 #ifndef ENTRY_SERVO_PIN
-#define ENTRY_SERVO_PIN 8              // Einfahrtsschranke: GP8 (Pin 11)
+#define ENTRY_SERVO_PIN 8   // Pin 11
 #endif
 #ifndef EXIT_SERVO_PIN
-#define EXIT_SERVO_PIN 9               // Ausfahrtsschranke: GP9 (Pin 12)
+#define EXIT_SERVO_PIN 9    // Pin 12
 #endif
 #ifndef SERVO_CLOSED_ANGLE
-#define SERVO_CLOSED_ANGLE 90          // Schranke unten (Arm waagrecht)
+#define SERVO_CLOSED_ANGLE 90
 #endif
 #ifndef SERVO_OPEN_ANGLE
-#define SERVO_OPEN_ANGLE 0             // Schranke oben
+#define SERVO_OPEN_ANGLE 0
 #endif
 
-// So lange bleibt eine Schranke offen, dann schliesst sie selbst (muss <= 10 s sein, AK-1.4 / AK-5.3)
+// so lange bleibt eine Schranke offen (hoechstens 10 s)
 #ifndef BARRIER_OPEN_MS
 #define BARRIER_OPEN_MS 5000
 #endif
 
-// Zeitzone der Schweiz (fuer die Ausgabe im seriellen Monitor)
 #ifndef TIMEZONE
 #define TIMEZONE "CET-1CEST,M3.5.0,M10.5.0/3"
 #endif

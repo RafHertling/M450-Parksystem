@@ -1,5 +1,4 @@
-// pages.h - Weboberflaeche der Schranken (Pico 2).
-// Die Kamera wird nachgemacht: das Kennzeichen wird von Hand eingegeben.
+// Weboberflaeche der Schranken. Statt einer Kamera wird das Kennzeichen eingetippt.
 #pragma once
 
 static const char SCHRANKEN_HTML[] = R"rawliteral(<!doctype html>
@@ -153,9 +152,8 @@ static const char SCHRANKEN_HTML[] = R"rawliteral(<!doctype html>
   }
   setInterval(function () { if (haveClock) $('clock').textContent = fmtClock(Date.now() + skew); }, 1000);
 
-  // Der Pico bedient nur eine Anfrage nach der anderen. Waehrend er bis zu 3 s auf die Kasse wartet,
-  // darf die Seite keine weiteren Abfragen schicken, sonst gehen ihm die Verbindungen aus und er
-  // bricht die laufende Anfrage ab ("Schranken-Pico antwortet nicht").
+  // Nur eine Anfrage gleichzeitig: wartet der Pico auf die Kasse, gehen ihm sonst die
+  // Verbindungen aus und er bricht die laufende Anfrage ab.
   var busy = 0;
   function api(path, timeoutMs) {
     var ctl = new AbortController();
@@ -185,7 +183,7 @@ static const char SCHRANKEN_HTML[] = R"rawliteral(<!doctype html>
   var kasseNames = { ok: 'Kasse: verbunden', error: 'Kasse: Verbindungsfehler', unknown: 'Kasse: unbekannt' };
   var pollFails = 0, polling = false;
   function poll() {
-    if (busy > 0 || polling) return;  // nur eine Anfrage gleichzeitig (siehe api())
+    if (busy > 0 || polling) return;
     polling = true;
     var ctl = new AbortController();
     setTimeout(function () { ctl.abort(); }, 5000);
